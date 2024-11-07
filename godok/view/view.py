@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QMainWindow, QListView, QVBoxLayout, QWidget
 
+
 class View(QMainWindow):
     def __init__(self, model):
         super().__init__()
