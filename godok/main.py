@@ -1,13 +1,13 @@
-from model.model import Model
-from view.view import View
+from model.database_model import DatabaseModel
+from view.main_view import MainView
 from PyQt6.QtWidgets import QApplication
 import sys
 
 
 def main():
     app = QApplication(sys.argv)
-    model = Model()
-    view = View(model)
+    model = DatabaseModel()
+    view = MainView(model)
     view.show()
     sys.exit(app.exec())
 
