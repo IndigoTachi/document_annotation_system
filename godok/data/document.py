@@ -10,7 +10,7 @@ class Document:
     name: str
     document_id: int = None
     year: int = None
-    pages: List[Annotation] = field(default_factory=list)
+    pages: List[DocumentPage] = field(default_factory=list)
 
     def to_dict(self) -> Dict:
         return {
