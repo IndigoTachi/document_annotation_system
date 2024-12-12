@@ -125,7 +125,7 @@ class DocumentWindow(QDialog):
         # annotation info
         right_layout = QVBoxLayout()
         self.annotation_name_label = QLabel("Nazwa: Brak")
-        self.annotation_image_placeholder = QLabel("Obraz (Placeholder)")
+        self.annotation_image_placeholder = QLabel("Brak obrazu")
         self.annotation_image_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.annotation_author_input = QLineEdit()
         self.annotation_author_input.setPlaceholderText("Autor")
@@ -334,6 +334,8 @@ class DocumentWindow(QDialog):
             self.annotation_name_label.setText(f"Nazwa: {self.current_annotation.name}")
             self.annotation_author_input.setText(self.current_annotation.author)
             self.annotation_content_input.setPlainText(self.current_annotation.content)
+            self.display_annotation_rectangle()
+            self.display_cropped_image()
         else:
             self.current_annotation = None
             self.annotation_name_label.setText("Nazwa: Brak")
@@ -341,6 +343,7 @@ class DocumentWindow(QDialog):
             self.annotation_content_input.clear()
             self.image_label.can_draw = False
             self.save_rectangle_button.setEnabled(False)
+            self.annotation_image_placeholder.setText("Nie wybrano adnotacji")
 
         self.image_label.rect_coords = None if not self.current_annotation else self.image_label.rect_coords
         self.image_label.update()

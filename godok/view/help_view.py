@@ -14,7 +14,7 @@ class HelpDialog(QDialog):
         self.list_widget = QListWidget()
         self.list_widget.addItem("wpis 1")
         self.stacked_widget = QStackedWidget(self)
-        self.create_content_for_item("wpis 1", "opis", "obrazek.jpg")
+        self.create_content_for_item("Dodawanie dokumentu", "Aby dodać dokument, kliknij Dodaj. Następnie wpisz nazwę dokumentu i wybierz lokalizację, z której chcesz go wczytać.", "obrazek.jpg")
 
         splitter.addWidget(self.list_widget)
         splitter.addWidget(self.stacked_widget)
