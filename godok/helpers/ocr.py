@@ -8,8 +8,8 @@ import pytesseract
 
 # Funkcja OCR przy użyciu OCRWebService
 def ocr_ocrwebservice(image: Image) -> Optional[str]:
-    LicenseCode = '4088F5E4-9D4B-415D-B2E5-D3B1C332A654'  # Podaj swój kod licencyjny
-    UserName = 'OLEGR'  # Podaj swoją nazwę użytkownika
+    LicenseCode = '88C6AB01-3CAC-482E-A5A9-26411D0AABB3'  # Podaj swój kod licencyjny
+    UserName = 'INDIGOTACHI'  # Podaj swoją nazwę użytkownika
 
     # URL API OCRWebService
     RequestUrl = "http://www.ocrwebservice.com/restservices/processDocument?gettext=true"
@@ -126,5 +126,5 @@ def ocr_tesseract(image: Image) -> Optional[str]:
         text = pytesseract.image_to_string(image, lang='eng+pol+rus+bel+ukr')
         return text
     except Exception as e:
-        # print("Błąd Tesseract OCR:", e)
+        print("Błąd Tesseract OCR:", e)
         return None
