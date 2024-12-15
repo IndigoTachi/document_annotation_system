@@ -29,19 +29,19 @@ def ocr_ocrwebservice(image: Image) -> Optional[str]:
     response = requests.post(RequestUrl, data=image_data, auth=(UserName, LicenseCode))
 
     if response.status_code == 401:
-        print("Nieautoryzowane żądanie. Sprawdź poprawność nazwy użytkownika i kodu licencyjnego.")
+        # print("Nieautoryzowane żądanie. Sprawdź poprawność nazwy użytkownika i kodu licencyjnego.")
         return None
 
     if response.status_code == 200:
         result_json = response.json()
         if "ErrorMessage" in result_json and result_json["ErrorMessage"]:
-            print("Błąd OCR:", result_json["ErrorMessage"])
+            # print("Błąd OCR:", result_json["ErrorMessage"])
             return None
         else:
             # Pobierz przetworzony tekst
             return result_json["OCRText"][0][0]
     else:
-        print(f"Błąd podczas przetwarzania: {response.status_code} {response.text}")
+        # print(f"Błąd podczas przetwarzania: {response.status_code} {response.text}")
         return None
 
 
@@ -70,10 +70,11 @@ def ocr_google_vision(image: Image) -> Optional[str]:
             text = response.json()["responses"][0]["textAnnotations"][0]["description"]
             return text
         except (IndexError, KeyError):
-            print("Brak tekstu na obrazie")
+            # print("Brak tekstu na obrazie")
+            return None
     else:
-        print("Błąd w odpowiedzi:", response.status_code, response.text)
-    return None
+        # print("Błąd w odpowiedzi:", response.status_code, response.text)
+        return None
 
 
 # Funkcja OCR przy użyciu Microsoft Azure Computer Vision API
@@ -95,7 +96,7 @@ def ocr_azure(image: Image) -> Optional[str]:
     response = requests.post(url, headers=headers, data=image_data)
     if response.status_code == 202:
         operation_location = response.headers["Operation-Location"]
-        print("Przetwarzanie dokumentu. Proszę czekać...")
+        # print("Przetwarzanie dokumentu. Proszę czekać...")
 
         # Czekamy na zakończenie przetwarzania
         while True:
@@ -111,10 +112,10 @@ def ocr_azure(image: Image) -> Optional[str]:
                 ]
                 return "\n".join(lines)
             elif result_json["status"] == "failed":
-                print("OCR nie powiodło się.")
+                # print("OCR nie powiodło się.")
                 return None
     else:
-        print("Błąd w odpowiedzi:", response.status_code, response.text)
+        # print("Błąd w odpowiedzi:", response.status_code, response.text)
         return None
 
 
@@ -125,5 +126,5 @@ def ocr_tesseract(image: Image) -> Optional[str]:
         text = pytesseract.image_to_string(image, lang='eng+pol+rus+bel+ukr')
         return text
     except Exception as e:
-        print("Błąd Tesseract OCR:", e)
+        # print("Błąd Tesseract OCR:", e)
         return None

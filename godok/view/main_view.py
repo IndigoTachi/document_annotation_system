@@ -68,6 +68,8 @@ class MainView(QMainWindow):
         self.ui.openButton.clicked.connect(self.open_document)
         self.ui.actionhelp.triggered.connect(self.show_help)
         self.ui.actionexit.triggered.connect(self.quit_application)
+        self.ui.importButton.setVisible(False)
+        self.ui.exportButton.setVisible(False)
 
     def quit_application(self):
         QApplication.quit()

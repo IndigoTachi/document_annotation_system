@@ -1,13 +1,14 @@
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QDialog, QWidget, QMessageBox, QListWidget,
-    QLineEdit, QTextEdit, QComboBox, QInputDialog
+    QLineEdit, QTextEdit, QCheckBox, QInputDialog
 )
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 from data.database import DocumentDatabase
 from data.annotation import Annotation
 from helpers.image_label import ImageLabel
+from view.ocr_view import OcrWindow
 import os
 
 
@@ -97,11 +98,14 @@ class DocumentWindow(QDialog):
         self.annotation_content_input.setPlaceholderText("Opis")
         self.annotation_content_input.textChanged.connect(self.update_annotation_content)
 
-        self.dropdown_label = QLabel("Rozpoznawanie tekstu:")
-        self.dropdown = QComboBox()
-        self.dropdown.addItems(["1", "2", "3"])
-        self.dropdown_button = QPushButton("Wykonaj OCR")
-        self.dropdown_button.clicked.connect(self.perform_ocr)
+        self.ocr_label = QLabel("Rozpoznawanie tekstu:")
+        self.checkbox_1 = QCheckBox("Tesseract OCR")
+        self.checkbox_2 = QCheckBox("Google Cloud Vision OCR")
+        self.checkbox_3 = QCheckBox("Azure Computer Vision OCR")
+        self.checkbox_4 = QCheckBox("OCRWebService")
+        self.ocr_button = QPushButton("Wykonaj OCR")
+        self.ocr_button.setEnabled(False)
+        self.ocr_button.clicked.connect(self.open_ocr_window)
 
         right_layout.addWidget(self.annotation_name_label)
         right_layout.addWidget(self.annotation_image_placeholder)
@@ -109,9 +113,12 @@ class DocumentWindow(QDialog):
         right_layout.addWidget(self.annotation_author_input)
         right_layout.addWidget(QLabel("Opis"))
         right_layout.addWidget(self.annotation_content_input)
-        right_layout.addWidget(self.dropdown_label)
-        right_layout.addWidget(self.dropdown)
-        right_layout.addWidget(self.dropdown_button)
+        right_layout.addWidget(self.ocr_label)
+        right_layout.addWidget(self.checkbox_1)
+        right_layout.addWidget(self.checkbox_2)
+        right_layout.addWidget(self.checkbox_3)
+        right_layout.addWidget(self.checkbox_4)
+        right_layout.addWidget(self.ocr_button)
 
         main_layout.addLayout(right_layout)
         self.setLayout(main_layout)
@@ -124,6 +131,26 @@ class DocumentWindow(QDialog):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.update_page_image()
+
+    def open_ocr_window(self):
+        if not (self.checkbox_1.isChecked() or self.checkbox_2.isChecked() or 
+                self.checkbox_3.isChecked() or self.checkbox_4.isChecked()):
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Icon.Warning)
+            msg.setWindowTitle("Uwaga")
+            msg.setText("Nie wybrano żadnej usługi")
+            msg.exec()
+            return
+
+        checkbox_values = {
+            "tesseract": self.checkbox_1.isChecked(),
+            "google": self.checkbox_2.isChecked(),
+            "azure": self.checkbox_3.isChecked(),
+            "ocrwebservice": self.checkbox_4.isChecked(),
+        }
+
+        self.new_window = OcrWindow(self.annotation_image_placeholder.pixmap(), checkbox_values, self.annotation_content_input)
+        self.new_window.exec()
 
     def update_page_image(self):
         if not self.document.pages:
@@ -218,9 +245,6 @@ class DocumentWindow(QDialog):
         if self.current_annotation:
             self.current_annotation.content = self.annotation_content_input.toPlainText()
 
-    def perform_ocr(self):
-        print(f"{self.dropdown.currentText()}")
-
     def save_rectangle(self):
         if not self.current_annotation:
             self.annotation_image_placeholder.setText("Nie wybrano adnotacji")
@@ -281,13 +305,15 @@ class DocumentWindow(QDialog):
         if selected_items:
             annotation_name = selected_items[0].text()
             current_page = self.document.pages[self.current_page_index]
-            print(annotation_name)
-            print(current_page.annotations)
+            # print(annotation_name)
+            # print(current_page.annotations)
             self.current_annotation = next(
                 (a for a in current_page.annotations if a.name == annotation_name), None
             )
             self.image_label.can_draw = True
             self.save_rectangle_button.setEnabled(True)
+            if self.current_annotation.coords:
+                self.ocr_button.setEnabled(True)
             self.annotation_name_label.setText(f"Nazwa: {self.current_annotation.name}")
             self.annotation_author_input.setText(self.current_annotation.author)
             self.annotation_content_input.setPlainText(self.current_annotation.content)
@@ -302,6 +328,7 @@ class DocumentWindow(QDialog):
             self.image_label.can_draw = False
             self.image_label.clear_rectangle()
             self.save_rectangle_button.setEnabled(False)
+            self.ocr_button.setEnabled(False)
             self.annotation_image_placeholder.setText("Nie wybrano adnotacji")
 
         self.image_label.rect_coords = None if not self.current_annotation else self.image_label.rect_coords
