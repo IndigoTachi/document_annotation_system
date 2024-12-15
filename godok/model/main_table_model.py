@@ -1,13 +1,14 @@
 from PyQt6.QtCore import QAbstractTableModel, Qt
+from model.database_model import DatabaseModel
 
 
 class DocumentTableModel(QAbstractTableModel):
-    def __init__(self, documents):
+    def __init__(self, database_model: DatabaseModel):
         super().__init__()
-        self.documents = documents
+        self.database_model = database_model
 
     def rowCount(self, parent=None):
-        return len(self.documents)
+        return self.database_model.rowCount()
 
     def columnCount(self, parent=None):
         return 2
@@ -15,7 +16,8 @@ class DocumentTableModel(QAbstractTableModel):
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
-        document = self.documents[index.row()]
+
+        document = self.database_model.documents[index.row()]
         if role == Qt.ItemDataRole.DisplayRole:
             if index.column() == 0:
                 return document.name
@@ -33,3 +35,7 @@ class DocumentTableModel(QAbstractTableModel):
             elif orientation == Qt.Orientation.Vertical:
                 return str(section + 1)
         return None
+
+    def refresh(self):
+        self.beginResetModel()
+        self.endResetModel()

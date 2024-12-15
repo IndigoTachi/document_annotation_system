@@ -25,7 +25,7 @@ class DocumentDatabase:
         with self.conn:
             cursor = self.conn.execute(
                 'INSERT INTO documents (title, year, pages) VALUES (?, ?, ?)',
-                (document.name, document.year, document.to_json_pages())
+                (document.name, document.year, document.to_json_pages(),)
             )
             return cursor.lastrowid
 
@@ -33,12 +33,12 @@ class DocumentDatabase:
         with self.conn:
             self.conn.execute(
                 'UPDATE documents SET title = ?, year = ?, pages = ? WHERE id = ?',
-                (document.name, document.year, document.to_json_pages(), document.document_id)
+                (document.name, document.year, document.to_json_pages(), document.document_id,)
             )
 
     def delete_document(self, document: Document):
         with self.conn:
-            self.conn.execute('DELETE FROM documents WHERE id = ?', (document.document_id))
+            self.conn.execute('DELETE FROM documents WHERE id = ?', (document.document_id,))
 
     def load_documents(self) -> list:
         cursor = self.conn.execute('SELECT id, title, year, pages FROM documents')
