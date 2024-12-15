@@ -9,5 +9,10 @@ In order to run the app, you need to have Python 3.12 installed.
 You also need additional libraries:
 
 ```
-python3 -m pip install pyqt6
+python3 -m pip install -r requirements.txt
 ```
+
+
+
+
+Designed using resources from Flaticon.com
