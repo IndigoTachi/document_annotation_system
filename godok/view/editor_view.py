@@ -1,49 +1,15 @@
 from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QDialog, QWidget, QMessageBox, QListWidget,
-    QLineEdit, QTextEdit, QComboBox, QInputDialog
+    QLineEdit, QTextEdit, QCheckBox, QInputDialog
 )
-from PyQt6.QtGui import QPixmap, QPainter, QPen
-from PyQt6.QtCore import Qt, QRect, QPoint
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtCore import Qt
 from data.database import DocumentDatabase
 from data.annotation import Annotation
+from helpers.image_label import ImageLabel
+from view.ocr_view import OcrWindow
 import os
-
-
-class ImageLabel(QLabel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.start_point = QPoint()
-        self.end_point = QPoint()
-        self.rect_coords = None
-        self.proportional_rect_coords = None
-        self.can_draw = False
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.start_point = event.pos()
-            self.end_point = event.pos()
-            self.update()
-
-    def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.MouseButton.LeftButton:
-            self.end_point = event.pos()
-            self.update()
-
-    def mouseReleaseEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            rect = QRect(self.start_point, self.end_point).normalized()
-            self.rect_coords = [rect.x(), rect.y(), rect.width(), rect.height()]
-            self.update()
-
-    def paintEvent(self, event):
-        super().paintEvent(event)
-        if self.rect_coords:
-            painter = QPainter(self)
-            pen = QPen(Qt.GlobalColor.red, 2)
-            painter.setPen(pen)
-            painter.drawRect(QRect(self.start_point, self.end_point).normalized())
-
 
 
 class DocumentWindow(QDialog):
@@ -59,7 +25,7 @@ class DocumentWindow(QDialog):
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(30, 30, 30, 30)
 
-        self.padding = 100
+        self.padding = 150
 
         # document
         document_layout = QVBoxLayout()
@@ -75,10 +41,6 @@ class DocumentWindow(QDialog):
         self.title_label = QLabel(f"Tytuł: {self.document.name}")
         document_layout.addWidget(self.title_label)
 
-        #self.image_label = QLabel("Strona")
-        #self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        #self.update_page_image()
-        #document_layout.addWidget(self.image_label)
         self.image_label = ImageLabel()
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_label.setStyleSheet("background-color: lightgray;")
@@ -126,6 +88,7 @@ class DocumentWindow(QDialog):
         right_layout = QVBoxLayout()
         self.annotation_name_label = QLabel("Nazwa: Brak")
         self.annotation_image_placeholder = QLabel("Brak obrazu")
+        self.annotation_image_placeholder.setMinimumSize(300, 300)
         self.annotation_image_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.annotation_author_input = QLineEdit()
         self.annotation_author_input.setPlaceholderText("Autor")
@@ -135,11 +98,14 @@ class DocumentWindow(QDialog):
         self.annotation_content_input.setPlaceholderText("Opis")
         self.annotation_content_input.textChanged.connect(self.update_annotation_content)
 
-        self.dropdown_label = QLabel("Rozpoznawanie tekstu:")
-        self.dropdown = QComboBox()
-        self.dropdown.addItems(["1", "2", "3"])
-        self.dropdown_button = QPushButton("Wykonaj OCR")
-        self.dropdown_button.clicked.connect(self.perform_ocr)
+        self.ocr_label = QLabel("Rozpoznawanie tekstu:")
+        self.checkbox_1 = QCheckBox("Tesseract OCR")
+        self.checkbox_2 = QCheckBox("Google Cloud Vision OCR")
+        self.checkbox_3 = QCheckBox("Azure Computer Vision OCR")
+        self.checkbox_4 = QCheckBox("OCRWebService")
+        self.ocr_button = QPushButton("Wykonaj OCR")
+        self.ocr_button.setEnabled(False)
+        self.ocr_button.clicked.connect(self.open_ocr_window)
 
         right_layout.addWidget(self.annotation_name_label)
         right_layout.addWidget(self.annotation_image_placeholder)
@@ -147,9 +113,12 @@ class DocumentWindow(QDialog):
         right_layout.addWidget(self.annotation_author_input)
         right_layout.addWidget(QLabel("Opis"))
         right_layout.addWidget(self.annotation_content_input)
-        right_layout.addWidget(self.dropdown_label)
-        right_layout.addWidget(self.dropdown)
-        right_layout.addWidget(self.dropdown_button)
+        right_layout.addWidget(self.ocr_label)
+        right_layout.addWidget(self.checkbox_1)
+        right_layout.addWidget(self.checkbox_2)
+        right_layout.addWidget(self.checkbox_3)
+        right_layout.addWidget(self.checkbox_4)
+        right_layout.addWidget(self.ocr_button)
 
         main_layout.addLayout(right_layout)
         self.setLayout(main_layout)
@@ -162,6 +131,26 @@ class DocumentWindow(QDialog):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.update_page_image()
+
+    def open_ocr_window(self):
+        if not (self.checkbox_1.isChecked() or self.checkbox_2.isChecked() or 
+                self.checkbox_3.isChecked() or self.checkbox_4.isChecked()):
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Icon.Warning)
+            msg.setWindowTitle("Uwaga")
+            msg.setText("Nie wybrano żadnej usługi")
+            msg.exec()
+            return
+
+        checkbox_values = {
+            "tesseract": self.checkbox_1.isChecked(),
+            "google": self.checkbox_2.isChecked(),
+            "azure": self.checkbox_3.isChecked(),
+            "ocrwebservice": self.checkbox_4.isChecked(),
+        }
+
+        self.new_window = OcrWindow(self.annotation_image_placeholder.pixmap(), checkbox_values, self.annotation_content_input)
+        self.new_window.exec()
 
     def update_page_image(self):
         if not self.document.pages:
@@ -196,8 +185,8 @@ class DocumentWindow(QDialog):
 
             self.current_annotation = None
 
-        except FileNotFoundError as e:
-            self.image_label.setText(f"Nie znaleziono pliku")
+        except FileNotFoundError:
+            self.image_label.setText("Nie znaleziono pliku")
         except Exception as e:
             self.image_label.setText(f"Błąd: {e}")
 
@@ -256,9 +245,6 @@ class DocumentWindow(QDialog):
         if self.current_annotation:
             self.current_annotation.content = self.annotation_content_input.toPlainText()
 
-    def perform_ocr(self):
-        print(f"{self.dropdown.currentText()}")
-
     def save_rectangle(self):
         if not self.current_annotation:
             self.annotation_image_placeholder.setText("Nie wybrano adnotacji")
@@ -300,40 +286,38 @@ class DocumentWindow(QDialog):
         img_width, img_height = pixmap.width(), pixmap.height()
         x, y = int(coords[0] * img_width), int(coords[1] * img_height)
         width, height = int((coords[2] - coords[0]) * img_width), int((coords[3] - coords[1]) * img_height)
-
         cropped_pixmap = pixmap.copy(x, y, width, height)
-        self.annotation_image_placeholder.setPixmap(cropped_pixmap)
-        self.annotation_image_placeholder.setScaledContents(True)
 
-        img_width = pixmap.width()
-        img_height = pixmap.height()
-        x = int(coords[0] * img_width)
-        y = int(coords[1] * img_height)
-        width = int((coords[2] - coords[0]) * img_width)
-        height = int((coords[3] - coords[1]) * img_height)
+        label_width = self.annotation_image_placeholder.width()
+        label_height = self.annotation_image_placeholder.height()
 
-        cropped_pixmap = pixmap.copy(x, y, width, height)
-        self.annotation_image_placeholder.setPixmap(cropped_pixmap)
-        self.annotation_image_placeholder.setScaledContents(True)
+        scaled_cropped_pixmap = cropped_pixmap.scaled(
+            label_width,
+            label_height,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        )
+
+        self.annotation_image_placeholder.setPixmap(scaled_cropped_pixmap)
 
     def select_annotation(self):
-        print("annotation selection triggered")
-        print("Selected items:", self.annotation_list.selectedItems())
         selected_items = self.annotation_list.selectedItems()
         if selected_items:
             annotation_name = selected_items[0].text()
             current_page = self.document.pages[self.current_page_index]
-            print(annotation_name)
-            print(current_page.annotations)
+            # print(annotation_name)
+            # print(current_page.annotations)
             self.current_annotation = next(
                 (a for a in current_page.annotations if a.name == annotation_name), None
             )
             self.image_label.can_draw = True
             self.save_rectangle_button.setEnabled(True)
-            # self.current_annotation = self.document.pages[self.current_page_index].annotations[index]
+            if self.current_annotation.coords:
+                self.ocr_button.setEnabled(True)
             self.annotation_name_label.setText(f"Nazwa: {self.current_annotation.name}")
             self.annotation_author_input.setText(self.current_annotation.author)
             self.annotation_content_input.setPlainText(self.current_annotation.content)
+            self.image_label.clear_rectangle()
             self.display_annotation_rectangle()
             self.display_cropped_image()
         else:
@@ -342,7 +326,9 @@ class DocumentWindow(QDialog):
             self.annotation_author_input.clear()
             self.annotation_content_input.clear()
             self.image_label.can_draw = False
+            self.image_label.clear_rectangle()
             self.save_rectangle_button.setEnabled(False)
+            self.ocr_button.setEnabled(False)
             self.annotation_image_placeholder.setText("Nie wybrano adnotacji")
 
         self.image_label.rect_coords = None if not self.current_annotation else self.image_label.rect_coords
@@ -350,6 +336,7 @@ class DocumentWindow(QDialog):
 
     def display_annotation_rectangle(self):
         if not self.current_annotation or not self.current_annotation.coords:
+            self.image_label.clear_rectangle()
             return
 
         coords = self.current_annotation.coords
@@ -357,12 +344,20 @@ class DocumentWindow(QDialog):
         if pixmap.isNull():
             return
 
+        label_width = self.image_label.width()
+        label_height = self.image_label.height()
+        pixmap_width = pixmap.width()
+        pixmap_height = pixmap.height()
+
+        width_ratio = label_width / pixmap_width
+        height_ratio = label_height / pixmap_height
+        scaling_ratio = min(width_ratio, height_ratio)
+
         img_width = pixmap.width()
         img_height = pixmap.height()
-        x = int(coords[0] * img_width)
-        y = int(coords[1] * img_height)
-        width = int((coords[2] - coords[0]) * img_width)
-        height = int((coords[3] - coords[1]) * img_height)
+        x = int(coords[0] * img_width * scaling_ratio)
+        y = int(coords[1] * img_height * scaling_ratio)
+        width = int((coords[2] - coords[0]) * img_width * scaling_ratio)
+        height = int((coords[3] - coords[1]) * img_height * scaling_ratio)
 
-        self.image_label.rect_coords = [x, y, width, height]
-        self.image_label.update()
+        self.image_label.set_rect_coords([x, y, width, height])
